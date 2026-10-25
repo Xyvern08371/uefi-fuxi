@@ -83,6 +83,11 @@
   gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemBoardModel|"13"
 
   #
+  # UniXNU menu plugins
+  #
+  gUniXNUPkgTokenSpaceGuid.PcdUniXNUDeviceModel|"fuxi"
+
+  #
   # Simple Frame Buffer
   # 面板 m3_38_0c_0a，1080x2400，DSC command mode。
   # 宽度必须与 ABL 的 scan-out stride 一致，否则画面错位。
@@ -106,6 +111,21 @@
   gQcomPkgTokenSpaceGuid.PcdBuildXblHobs|FALSE
 !endif
 
+  #
+  # Advanced Logger
+  # DXE-only 配置：DXE Core 从保留内存分配日志缓冲区，不依赖 SEC。
+  #
+!if $(TARGET) == DEBUG
+  gAdvLoggerPkgTokenSpaceGuid.PcdAdvancedLoggerPages|64
+  gAdvLoggerPkgTokenSpaceGuid.PcdAdvancedLoggerHdwPortDebugPrintErrorLevel|0xFFFFFFFF
+!endif
+
+[PcdsFeatureFlag]
+!if $(TARGET) == DEBUG
+  gAdvLoggerPkgTokenSpaceGuid.PcdAdvancedLoggerFixedInRAM|FALSE
+  gAdvLoggerPkgTokenSpaceGuid.PcdAdvancedLoggerLocator|FALSE
+!endif
+
 [LibraryClasses]
   #
   # Memory Libraries
@@ -115,6 +135,29 @@
 
   UniXNULib|UniXNUPkg/Library/UniXNULib/UniXNULib.inf
   FdtLib|MdePkg/Library/BaseFdtLib/BaseFdtLib.inf
+
+  AdvancedLoggerAccessLib|AdvLoggerPkg/Library/AdvancedLoggerAccessLib/AdvancedLoggerAccessLib.inf
+  AdvancedLogViewLib|UniXNUPkg/Library/AdvancedLogViewLib/AdvancedLogViewLib.inf
+  QrEncoderLib|MsGraphicsPkg/Library/QrEncoderLib/QrEncoderLib.inf
+
+!if $(TARGET) == DEBUG
+  AdvancedLoggerHdwPortLib|AdvLoggerPkg/Library/AdvancedLoggerHdwPortLib/AdvancedLoggerHdwPortLib.inf
+
+[LibraryClasses.common.DXE_CORE]
+  DebugLib|AdvLoggerPkg/Library/BaseDebugLibAdvancedLogger/BaseDebugLibAdvancedLogger.inf
+  AssertLib|AdvLoggerPkg/Library/AssertLib/AssertLib.inf
+  AdvancedLoggerLib|AdvLoggerPkg/Library/AdvancedLoggerLib/DxeCore/AdvancedLoggerLib.inf
+
+[LibraryClasses.common.DXE_DRIVER, LibraryClasses.common.UEFI_DRIVER, LibraryClasses.common.UEFI_APPLICATION]
+  DebugLib|AdvLoggerPkg/Library/BaseDebugLibAdvancedLogger/BaseDebugLibAdvancedLogger.inf
+  AssertLib|AdvLoggerPkg/Library/AssertLib/AssertLib.inf
+  AdvancedLoggerLib|AdvLoggerPkg/Library/AdvancedLoggerLib/Dxe/AdvancedLoggerLib.inf
+
+[LibraryClasses.common.DXE_RUNTIME_DRIVER]
+  DebugLib|AdvLoggerPkg/Library/BaseDebugLibAdvancedLogger/BaseDebugLibAdvancedLogger.inf
+  AssertLib|AdvLoggerPkg/Library/AssertLib/AssertLib.inf
+  AdvancedLoggerLib|AdvLoggerPkg/Library/AdvancedLoggerLib/Runtime/AdvancedLoggerLib.inf
+!endif
 
 [Components]
   #
@@ -129,6 +172,9 @@
   # disabled for stage 1, see Include/DXE.inc
   DarwinBootPkg/Driver/DarwinBoot.inf
   fuxiPkg/Drivers/FuxiRamDiskDxe/FuxiRamDiskDxe.inf
+!if $(TARGET) == DEBUG
+  UniXNUPkg/Driver/AdvancedLogDxe/AdvancedLogDxe.inf
+!endif
   FatPkg/EnhancedFatDxe/Fat.inf
 
   #

@@ -19,8 +19,9 @@ ASM_FUNC (_ModuleEntryPoint)
   msr   SPSel, #1
   isb
 
-  // Before the first store of this stage: clean and invalidate the data caches the previous stage filled (x0 is kept in x20).
+  // Before the first store of this stage: clean and invalidate the data caches the previous stage filled (x0 and x1 are kept in x20/x21).
   mov   x20, x0
+  mov   x21, x1
   bl    ASM_PFX (SecCleanInvalidateDataCacheAll)
   mov   x0, x20
 

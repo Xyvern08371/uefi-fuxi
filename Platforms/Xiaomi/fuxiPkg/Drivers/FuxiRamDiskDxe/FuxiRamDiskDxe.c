@@ -10,19 +10,21 @@
 **/
 
 #include <Uefi.h>
+#include <Library/DebugLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/DevicePathLib.h>
 #include <Library/HobLib.h>
-#include <Library/CpuLib.h>
 #include <Protocol/BlockIo.h>
 #include <Protocol/DevicePath.h>
 
 #define FUXI_LABEL_OFFSET  0x47
 #define FUXI_LABEL_LENGTH  7
 #define FUXI_BLOCK_SIZE    512
+#define FUXI_PAYLOAD_BASE  0xA8000000
+#define FUXI_PAYLOAD_SIZE  0x10000000
 
 STATIC EFI_BLOCK_IO_MEDIA     mMedia;
 STATIC EFI_BLOCK_IO_PROTOCOL  mBlockIo;
@@ -165,6 +167,29 @@ FuxiBlockFlush (
   return EFI_SUCCESS;
 }
 
+STATIC
+BOOLEAN
+ScanRange (
+  IN UINT64  Start,
+  IN UINT64  Length
+  )
+{
+  UINT64                 Address;
+  UINT64                 TotalSectors;
+
+  for (Address = Start; Address + FUXI_BLOCK_SIZE <= Start + Length; Address += FUXI_BLOCK_SIZE) {
+    UINT8  *Page = (UINT8 *)(UINTN)Address;
+    if (IsPayloadVolume (Page, &TotalSectors)) {
+      mVolumeBase  = Page;
+      mVolumeBytes = (UINTN)(TotalSectors * FUXI_BLOCK_SIZE);
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+STATIC
 BOOLEAN
 LocatePayload (
   VOID
@@ -178,10 +203,10 @@ LocatePayload (
   UINT32                 DescVersion;
   UINTN                  Index;
   UINTN                  Count;
-  UINT64                 Address;
-  UINT64                 TotalSectors;
-  UINT8                  *Page;
-  UINT64                 RegionEnd;
+
+  if (ScanRange (FUXI_PAYLOAD_BASE, FUXI_PAYLOAD_SIZE)) {
+    return TRUE;
+  }
 
   MapSize = 0;
   gBS->GetMemoryMap (&MapSize, NULL, &MapKey, &DescSize, &DescVersion);
@@ -198,7 +223,6 @@ LocatePayload (
   }
 
   Count = MapSize / DescSize;
-  Print (L"FUXIRAMDISK: scanning %lu memory regions\n", (UINT64)Count);
   for (Index = 0; Index < Count; Index++) {
     EFI_MEMORY_DESCRIPTOR  *Entry = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)Map + Index * DescSize);
 
@@ -206,26 +230,7 @@ LocatePayload (
       continue;
     }
 
-    RegionEnd = Entry->PhysicalStart + (Entry->NumberOfPages << 12);
-
-    // The bootloader may place the ramdisk on a 512-byte boundary.
-    for (Address = Entry->PhysicalStart; Address + FUXI_BLOCK_SIZE <= RegionEnd; Address += FUXI_BLOCK_SIZE) {
-      Page = (UINT8 *)(UINTN)Address;
-      if (!IsPayloadVolume (Page, &TotalSectors)) {
-        continue;
-      }
-
-      Print (L"FUXIRAMDISK: candidate at %lx, %lu sectors, labelled=%d\n",
-             Address, TotalSectors, mLastLabeled ? 1 : 0);
-
-      if (Address + TotalSectors * FUXI_BLOCK_SIZE > RegionEnd) {
-        // The bootloader may have described the ramdisk as several adjacent
-        // descriptors; trust the BPB size rather than dropping a real volume.
-        Print (L"FUXIRAMDISK: volume at %lx crosses its descriptor, using the BPB size\n", Address);
-      }
-
-      mVolumeBase  = Page;
-      mVolumeBytes = (UINTN)(TotalSectors * FUXI_BLOCK_SIZE);
+    if (ScanRange (Entry->PhysicalStart, Entry->NumberOfPages << 12)) {
       FreePool (Map);
       return TRUE;
     }
@@ -247,7 +252,7 @@ FuxiRamDiskEntry (
   // Make the run visible: the boot manager clears the screen afterwards.
   gBS->Stall (3000000);
   gST->ConOut->ClearScreen (gST->ConOut);
-  Print (L"FUXIRAMDISK: driver entry\n");
+  DEBUG ((DEBUG_INFO, "FUXIRAMDISK: driver entry\n"));
   EFI_HANDLE                Handle;
   EFI_DEVICE_PATH_PROTOCOL  *Path;
   VENDOR_DEVICE_PATH        Vendor;
@@ -269,10 +274,10 @@ FuxiRamDiskEntry (
 
         mHintSeen = TRUE;
         mHintValue = Base;
-        Print (L"FUXIRAMDISK: device tree at %lx, looking below it\n", Base);
+        DEBUG ((DEBUG_INFO, "FUXIRAMDISK: device tree at %lx, looking below it\n", Base));
         for (Probe = Base; (Probe > Base - 0x10000000ULL) && (Probe >= FUXI_BLOCK_SIZE); Probe -= FUXI_BLOCK_SIZE) {
           if (IsPayloadVolume ((UINT8 *)(UINTN)Probe, &Total)) {
-            Print (L"FUXIRAMDISK: payload at %lx below the tree\n", Probe);
+            DEBUG ((DEBUG_INFO, "FUXIRAMDISK: payload at %lx below the tree\n", Probe));
             mVolumeBase  = (UINT8 *)(UINTN)Probe;
             mVolumeBytes = (UINTN)(Total * FUXI_BLOCK_SIZE);
             break;
@@ -285,13 +290,16 @@ FuxiRamDiskEntry (
   }
 
   if (mVolumeBase == NULL) {
-    // A full RAM sweep takes far too long and looks like a hang; report what
-    // the SEC hint was and stop, which is all this diagnostic build needs.
-    Print (L"SIGNAL: no volume from the hint\n");
-    Print (L"  hob=%d base=%lx\n", mHintSeen ? 1 : 0, mHintValue);
-    gBS->Stall (8000000);
-    CpuDeadLoop ();
-    return EFI_SUCCESS;
+    // The SEC hint is an optimisation.  If the bootloader places the ramdisk
+    // outside the expected window, fall back to the memory map scan instead
+    // of entering UniXNU with no payload volume.
+    DEBUG ((DEBUG_INFO, "FUXIRAMDISK: no volume from the hint, scanning the map\n"));
+    DEBUG ((DEBUG_INFO, "  hob=%d base=%lx\n", mHintSeen ? 1 : 0, mHintValue));
+    if (!LocatePayload ()) {
+      DEBUG ((DEBUG_ERROR, "SIGNAL: no payload volume\n"));
+      gBS->Stall (6000000);
+      return EFI_SUCCESS;
+    }
   }
 
   ZeroMem (&Vendor, sizeof (Vendor));
@@ -336,13 +344,13 @@ FuxiRamDiskEntry (
     return Status;
   }
 
-  Print (L"SIGNAL: summary\n");
-  Print (L"  hob=%d base=%lx\n", mHintSeen ? 1 : 0, mHintValue);
-  Print (L"  volume=%lx\n", (UINT64)(UINTN)mVolumeBase);
+  DEBUG ((DEBUG_INFO, "SIGNAL: summary\n"));
+  DEBUG ((DEBUG_INFO, "  hob=%d base=%lx\n", mHintSeen ? 1 : 0, mHintValue));
+  DEBUG ((DEBUG_INFO, "  volume=%lx\n", (UINT64)(UINTN)mVolumeBase));
   gBS->Stall (6000000);
 
-  Print (L"FUXIRAMDISK: payload at %lx, %lu KiB as a read-only block device\n",
-         (UINT64)(UINTN)mVolumeBase, (UINT64)(mVolumeBytes / 1024));
+  DEBUG ((DEBUG_INFO, "FUXIRAMDISK: payload at %lx, %lu KiB as a read-only block device\n",
+         (UINT64)(UINTN)mVolumeBase, (UINT64)(mVolumeBytes / 1024)));
 
   return EFI_SUCCESS;
 }

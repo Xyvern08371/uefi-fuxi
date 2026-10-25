@@ -3,6 +3,11 @@
 Kept in the UEFI checkout instead of the UniXNU core. It imports the core
 bootimg helpers and packs/verifies a header-v3/v4 boot image, tolerating
 device-tree nodes that already exist in a live tree such as splash_region.
+
+fuxi's ABL does not load a large ramdisk from the boot image. The UniXNU
+payload volume is therefore appended to the gzip kernel field immediately
+after the firmware volume, where SEC/FuxiRamDiskDxe already look for it, and
+the boot image's ramdisk field is left as a one-byte placeholder.
 """
 import gzip
 import hashlib
@@ -71,17 +76,20 @@ def build(ctx, uefi, fd, dtb, ramdisk=None, output=None):
         tree = patch_dtb(Path(dtb).read_bytes(), ctx.board.get('bootimg', {}).get('dtb_node', []), scratch)
         if tree[:4] != b'\xd0\x0d\xfe\xed' or struct.unpack_from('>I', tree, 4)[0] != len(tree):
             raise Error('invalid compiled device tree')
-        combined = shim + firmware
-        kernel = gzip.compress(combined, mtime=0) + tree
-        kernel_path = scratch / 'Image.gz-dtb'
-        kernel_path.write_bytes(kernel)
+        payload = b''
         if ramdisk:
             ramdisk_path = Path(ramdisk)
             if not ramdisk_path.is_file():
                 raise Error(f'ramdisk not found: {ramdisk_path}')
-        else:
-            ramdisk_path = scratch / 'ramdisk'
-            ramdisk_path.write_bytes(b'')
+            payload = ramdisk_path.read_bytes()
+
+        combined = shim + firmware + payload
+        kernel = gzip.compress(combined, mtime=0) + tree
+        kernel_path = scratch / 'Image.gz-dtb'
+        kernel_path.write_bytes(kernel)
+
+        ramdisk_path = scratch / 'ramdisk'
+        ramdisk_path.write_bytes(b'\0' if payload else b'')
         command = [sys.executable, str(mkbootimg), '--kernel', str(kernel_path), '--ramdisk', str(ramdisk_path), '-o', str(out)]
         for key in MKBOOTIMG_FLAGS:
             if key in image:
@@ -90,7 +98,9 @@ def build(ctx, uefi, fd, dtb, ramdisk=None, output=None):
         report = verify(out, combined, tree, ramdisk_path, image)
 
     report.update(image_sha256=sha256_file(out), image_bytes=out.stat().st_size, fd_sha256=sha256_file(fd),
-                  dtb_sha256=sha256_file(dtb), shim_bytes=len(shim), hardware_tested=False)
+                  dtb_sha256=sha256_file(dtb), shim_bytes=len(shim),
+                  payload_bytes=len(payload),
+                  hardware_tested=False)
     (out.parent / 'bootimage.json').write_text(json.dumps(report, indent=2) + '\n')
     log(f'bootimage: {out} ({out.stat().st_size} bytes)')
     return out

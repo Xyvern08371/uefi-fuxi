@@ -5,7 +5,8 @@
   sheng). The boot manager navigates with ordinary console keys. This driver
   reads the three hardware keys through the SPMI PMIC arbiter (FuxiSpmiKeys.h
   has the register facts, re-verified against fuxi's device tree) and presents
-  them as keys: volume up = Up, volume down = Down, power = Enter.
+  them as keys: volume up = Up, volume down = Down, a short power press =
+  Enter, and a long power press = Escape.
 
   It only reads; polling stops when boot services end, so nothing is left
   running for the kernel, which uses the same arbiter later.
@@ -32,6 +33,8 @@
 #define POLL_MS         20
 #define REPEAT_DELAY    25     // polls (500 ms) before a held volume key repeats
 #define REPEAT_PERIOD   7      // polls (140 ms) between repeats
+#define POWER_DEBOUNCE_POLLS  2
+#define LONG_PRESS_POLLS      40    // polls (800 ms) before power is a long press
 #define QUEUE_SIZE      16
 #define MAX_FAILURES    50     // consecutive failed samples before polling stops
 
@@ -57,6 +60,7 @@ STATIC struct sk_filter   mFilter;
 STATIC EFI_INPUT_KEY      mQueue[QUEUE_SIZE];
 STATIC UINTN              mHead, mCount;
 STATIC UINTN              mFailures;
+STATIC UINTN              mPowerHeld;
 STATIC EFI_EVENT          mTimer, mExit;
 STATIC EFI_HANDLE         mHandle;
 
@@ -161,8 +165,20 @@ Poll (
     Push (SCAN_DOWN, 0);
   }
 
-  if (Out & SK_KEY_POWER) {
-    Push (SCAN_NULL, CHAR_CARRIAGE_RETURN);
+  //
+  // Power is reported on release so a short press (Enter) and a long press
+  // (Escape) can be told apart. Volume keys keep the auto-repeat above.
+  //
+  if ((Pressed & SK_KEY_POWER) != 0) {
+    mPowerHeld++;
+    if (mPowerHeld == LONG_PRESS_POLLS) {
+      Push (SCAN_ESC, 0);
+    }
+  } else {
+    if ((mPowerHeld >= POWER_DEBOUNCE_POLLS) && (mPowerHeld < LONG_PRESS_POLLS)) {
+      Push (SCAN_NULL, CHAR_CARRIAGE_RETURN);
+    }
+    mPowerHeld = 0;
   }
 }
 

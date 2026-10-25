@@ -21,8 +21,8 @@
 // This file covers 0x80000000..0x100000000 only. The DRAM banks above 4 GiB
 // (0x880000000 + 925 MiB, 0x8C0000000 + 3 GiB, 0x980000000 + 6 GiB, seen in
 // the live FDT) are deliberately omitted: the first bring-up fits entirely in
-// the 209 MiB DXE Heap at 0xBAB00000. They are added in stage 2, when the XNU
-// kernel window needs real RAM.
+// the 149 MiB DXE Heap at 0xBAB00000. DarwinBoot gets its own 320 MiB
+// conventional window at 0xC4000000 below (kept free of early allocations).
 //
 // SPDX header above; original table from Qualcomm's uefiplatLA.cfg.
 #include <Library/MemoryMapLib.h>
@@ -32,7 +32,7 @@ STATIC EFI_MEMORY_REGION_DESCRIPTOR gMemoryDescriptor[] = {
   // decompression buffer from the TCB before it writes DXE heap HOBs, and
   // an allocator that hands out the FD region would overwrite the very data
   // it is decoding (that surfaced as 'Decompress Failed - Invalid Parameter').
-  {"DXE Heap",          0xBAB00000, 0x0D1C0000, AddMem,   SYS_MEM, SYS_MEM_CAP, Conv,   WRITE_BACK_XN},
+  {"DXE Heap",          0xBAB00000, 0x09500000, AddMem,   SYS_MEM, SYS_MEM_CAP, Conv,   WRITE_BACK_XN},
 
   // ---- firmware-owned reservations ----
   {"NOMAP",             0x80000000, 0x01200000, HobOnlyNoCacheSetting,    MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
@@ -64,17 +64,27 @@ STATIC EFI_MEMORY_REGION_DESCRIPTOR gMemoryDescriptor[] = {
   {"FV Region",         0xA7AD9000, 0x00400000, AddMem,   SYS_MEM, SYS_MEM_CAP, BsData, WRITE_BACK_XN},
   {"UEFI RESV",         0xA7ED9000, 0x00127000, AddMem,   SYS_MEM, SYS_MEM_CAP, BsData, WRITE_BACK_XN},
 
-  // ---- handed to the next payload ----
+  // ---- BootShim relocation window ----
   // 0xA8000000..0xB8000000 is where BootShim relocates the firmware volume and
-  // where the XNU kernel window goes later.
-  {"Kernel",            0xA8000000, 0x10000000, AddMem,   SYS_MEM, SYS_MEM_CAP, Reserv, WRITE_BACK_XN},
+  // decompresses the next stage. Keep it reserved so the DXE allocator never
+  // hands it out.
+  {"BootShim Window",   0xA8000000, 0x10000000, AddMem,   SYS_MEM, SYS_MEM_CAP, Reserv, WRITE_BACK_XN},
+
+  // ---- DarwinBoot kernel window ----
+  // DarwinBoot needs one contiguous 256 MiB run (WINDOW_SIZE = SIZE_256MB,
+  // aligned to 2 MiB, plus headroom for the kernel's 0x7c000 base offset).
+  // The DXE heap above is too fragmented by the time it runs, so hand this
+  // 320 MiB DRAM gap over as conventional memory and keep it after the heap:
+  // AllocatePages (AllocateAddress) lands here. Ends at 0xD8000000, clear of
+  // TZApps Reserved at 0xD8800000.
+  {"DarwinBoot Window", 0xC4000000, 0x14000000, AddMem,   SYS_MEM, SYS_MEM_CAP, Conv,   WRITE_BACK_XN},
 
   // ---- the ABL frame buffer fuxi keeps scanning out ----
   // Identical to /reserved-memory/splash_region in the live device tree, and to
   // sheng's hand-patched dtb_node. SimpleFbDxe publishes a GOP on top of it.
   {"Display Reserved",  0xB8000000, 0x02B00000, AddMem,   MEM_RES, SYS_MEM_CAP, Reserv, WRITE_THROUGH_XN},
 
-  // ---- 209 MiB of general-purpose RAM for DXE ----
+  // ---- 149 MiB of general-purpose RAM for DXE ----
   // ---- MMIO register regions ----
   // uefiplatLA.cfg only lists DDR in [MemoryMap]; the register apertures live
   // in a separate section and have to be mapped here, or every device driver
