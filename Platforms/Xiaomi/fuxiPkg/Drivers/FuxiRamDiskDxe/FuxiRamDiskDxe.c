@@ -4,7 +4,9 @@
   `fastboot boot` loads the payload FAT volume into RAM, but nothing tells this
   firmware where. Scan the UEFI memory map for a FAT boot sector labelled
   FUXIESP and publish it through EFI_BLOCK_IO_PROTOCOL; the standard FAT driver
-  then mounts it and the boot manager sees an ordinary file system.
+  then mounts it and the boot manager sees an ordinary file system.  The volume
+  is RAM-backed, so writes are allowed in place: they only change this boot's
+  copy and let the already-mounted EFI disk carry exported log files.
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
@@ -154,7 +156,29 @@ FuxiBlockWrite (
   IN VOID                   *Buffer
   )
 {
-  return EFI_WRITE_PROTECTED;
+  UINT64  Offset;
+  UINT64  End;
+
+  if ((MediaId != 0) && (MediaId != This->Media->MediaId)) {
+    return EFI_MEDIA_CHANGED;
+  }
+
+  if (Buffer == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if ((BufferSize % FUXI_BLOCK_SIZE) != 0) {
+    return EFI_BAD_BUFFER_SIZE;
+  }
+
+  Offset = Lba * FUXI_BLOCK_SIZE;
+  End    = Offset + BufferSize;
+  if ((End < Offset) || (End > mVolumeBytes)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  CopyMem (mVolumeBase + Offset, Buffer, BufferSize);
+  return EFI_SUCCESS;
 }
 
 STATIC
@@ -318,7 +342,7 @@ FuxiRamDiskEntry (
   mMedia.RemovableMedia   = FALSE;
   mMedia.MediaPresent     = TRUE;
   mMedia.LogicalPartition = FALSE;
-  mMedia.ReadOnly         = TRUE;
+  mMedia.ReadOnly         = FALSE;
   mMedia.WriteCaching     = FALSE;
   mMedia.BlockSize        = FUXI_BLOCK_SIZE;
   mMedia.IoAlign          = 0;
@@ -349,7 +373,7 @@ FuxiRamDiskEntry (
   DEBUG ((DEBUG_INFO, "  volume=%lx\n", (UINT64)(UINTN)mVolumeBase));
   gBS->Stall (6000000);
 
-  DEBUG ((DEBUG_INFO, "FUXIRAMDISK: payload at %lx, %lu KiB as a read-only block device\n",
+  DEBUG ((DEBUG_INFO, "FUXIRAMDISK: payload at %lx, %lu KiB as a RAM-backed block device\n",
          (UINT64)(UINTN)mVolumeBase, (UINT64)(mVolumeBytes / 1024)));
 
   return EFI_SUCCESS;
