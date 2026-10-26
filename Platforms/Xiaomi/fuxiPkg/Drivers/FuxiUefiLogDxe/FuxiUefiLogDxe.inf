@@ -1,0 +1,47 @@
+## @file
+#  Persist the UEFI Advanced Logger into the UFS userdata log area.
+#
+#  This driver installs the UniXNU log-flush hook. DarwinBoot calls it
+#  after its final hand-off diagnostics and before ExitBootServices; the
+#  driver then collects the Advanced Logger text and writes it to the 64 4K
+#  blocks immediately before the XNU SHLOG001 window. FuxiUfsLogDxe reads
+#  both sections so the QR stream contains UEFI -> DarwinBoot -> XNU.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x0001001B
+  BASE_NAME                      = FuxiUefiLogDxe
+  FILE_GUID                      = A69A5EC2-46E3-4A6B-B8D4-6D05F21C5E2D
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = FuxiUefiLogDxeEntry
+
+[Sources]
+  FuxiUefiLogDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  UniXNUPkg/UniXNUPkg.dec
+
+[LibraryClasses]
+  AdvancedLogViewLib
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  IoLib
+  MemoryAllocationLib
+  PrintLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Protocols]
+  gEfiBlockIoProtocolGuid          ## CONSUMES
+  gUniXNULogFlushProtocolGuid      ## PRODUCES
+
+[Guids]
+  gEfiEventExitBootServicesGuid    ## CONSUMES
+
+[Depex]
+  gEfiBlockIoProtocolGuid
