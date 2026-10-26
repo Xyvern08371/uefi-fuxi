@@ -113,3 +113,7 @@
   INF MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
   INF MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
   INF MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/UsbDeviceDxe/UsbDeviceDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/UsbConfigDxe/UsbConfigDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/UsbInitDxe/UsbInitDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/UCDxe/UCDxe.inf
