@@ -2,6 +2,7 @@ __pycache__
 .vscode
 Build
 Conf
+out
 
 bootpayload.bin
 BootShim.bin
