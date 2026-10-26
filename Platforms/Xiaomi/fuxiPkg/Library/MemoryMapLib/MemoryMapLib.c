@@ -18,11 +18,13 @@
 //   0xA7601000  ...    Info Blk / MMU PageTables / Log Buffer
 //   0xA760D000  ...    UEFI Stack   (matches fuxi.dsc PcdCPUCoresStackBase)
 //
-// This file covers 0x80000000..0x100000000 only. The DRAM banks above 4 GiB
-// (0x880000000 + 925 MiB, 0x8C0000000 + 3 GiB, 0x980000000 + 6 GiB, seen in
-// the live FDT) are deliberately omitted: the first bring-up fits entirely in
-// the 149 MiB DXE Heap at 0xBAB00000. DarwinBoot gets its own 320 MiB
-// conventional window at 0xC4000000 below (kept free of early allocations).
+// This file covers 0x80000000..0x100000000 plus the high DRAM banks the live
+// FDT /memory node exposes: 0x8C0000000 + 3 GiB and 0x980000000 + 6 GiB.
+// DarwinBoot needs one contiguous conventional run for the owned window, and
+// the 4 GiB request is satisfied by the 6 GiB bank at 0x980000000. The
+// 0x880000000 + 925 MiB bank is left out on purpose: sheng hit a synchronous
+// external abort while clearing around 0x8BB300000 in that bank, and fuxi's
+// entry spans the same address.
 //
 // SPDX header above; original table from Qualcomm's uefiplatLA.cfg.
 #include <Library/MemoryMapLib.h>
@@ -78,6 +80,13 @@ STATIC EFI_MEMORY_REGION_DESCRIPTOR gMemoryDescriptor[] = {
   // AllocatePages (AllocateAddress) lands here. Ends at 0xD8000000, clear of
   // TZApps Reserved at 0xD8800000.
   {"DarwinBoot Window", 0xC4000000, 0x14000000, AddMem,   SYS_MEM, SYS_MEM_CAP, Conv,   WRITE_BACK_XN},
+
+  // ---- high DRAM banks (live FDT /memory) ----
+  // Both are category-SDRAM usable RAM. They are mapped as conventional so the
+  // DXE allocator and DarwinBoot can use them; DarwinBoot's 4 GiB owned window
+  // lands in the 6 GiB bank at 0x980000000.
+  {"DRAM bank 0x8C0000000", 0x8C0000000, 0xC0000000, AddMem, SYS_MEM, SYS_MEM_CAP, Conv, WRITE_BACK_XN},
+  {"DRAM bank 0x980000000", 0x980000000, 0x180000000, AddMem, SYS_MEM, SYS_MEM_CAP, Conv, WRITE_BACK_XN},
 
   // ---- the ABL frame buffer fuxi keeps scanning out ----
   // Identical to /reserved-memory/splash_region in the live device tree, and to
