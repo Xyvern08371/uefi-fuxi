@@ -48,6 +48,13 @@
   FUXI_VENDOR_HW                 = 0
 
   #
+  # 1 = load only the vendor stack needed for UFS, without Display/USB/charger.
+  # UFSDxe is a stock nuwa binary; this keeps the panel on the ABL scan-out
+  # path while still publishing a UFS BlockIo for FuxiUfsLogDxe.
+  #
+  FUXI_UFS_STACK                 = 1
+
+  #
   # 0 = SM8550-AB
   # 1 = SM8550-AC
   # fuxi (2211133C) 为 SM8550-AB
@@ -105,10 +112,12 @@
   # Platform PEI
   #
   gQcomPkgTokenSpaceGuid.PcdPlatformType|"LA"
-!if $(FUXI_VENDOR_HW) == 0
+!if ($(FUXI_VENDOR_HW) == 0) && ($(FUXI_UFS_STACK) == 0)
   # 沿用 sheng 的规避：PlatformPeim 会去扫 stock UEFI 残留的 FD 窗口并调用其
   # scheduler protocol，在没有 vendor 驱动读这些 HOB 时会随机卡死。
   gQcomPkgTokenSpaceGuid.PcdBuildXblHobs|FALSE
+!else
+  gQcomPkgTokenSpaceGuid.PcdBuildXblHobs|TRUE
 !endif
 
   #
@@ -178,6 +187,8 @@
   # disabled for stage 1, see Include/DXE.inc
   DarwinBootPkg/Driver/DarwinBoot.inf
   fuxiPkg/Drivers/FuxiRamDiskDxe/FuxiRamDiskDxe.inf
+  fuxiPkg/Drivers/FuxiUfsLogDxe/FuxiUfsLogDxe.inf
+  fuxiPkg/Drivers/FuxiUefiLogDxe/FuxiUefiLogDxe.inf
 !if $(TARGET) == DEBUG
   UniXNUPkg/Driver/AdvancedLogDxe/AdvancedLogDxe.inf
 !endif

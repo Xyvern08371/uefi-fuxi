@@ -1,9 +1,8 @@
 ## fuxiPkg/Include/DXE.inc
 ## Xiaomi 13 (SM8550) — derived from uefi-sheng shengPkg (branch: sheng).
 ##
-## FUXI_VENDOR_HW = 0: no `Binaries/fuxi/*` entries. The vendor stack
-## (SMEM, clocks, RPMh, UFS, USB, charger, PmicDxe) is what turns the panel
-## black on sheng; fuxi is untested, so it stays out of the first build.
+## FUXI_UFS_STACK = 1 loads the nuwa vendor services required by UFSDxe.
+## Display, USB device and charger vendor chains remain out of this build.
 
   INF MdeModulePkg/Core/Dxe/DxeMain.inf
   INF MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
@@ -27,6 +26,38 @@
 
   INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
 
+!if $(FUXI_UFS_STACK) == 1
+  #
+  # UFS 前链：只接 nuwa UFSDxe 需要的 vendor 服务，不接 Display/USB 设备链。
+  # 顺序沿用 nuwaPkg/Include/DXE.inc。
+  #
+  INF Binaries/nuwa/QcomPkg/Drivers/EnvDxe/EnvDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/ShmBridgeDxe/ShmBridgeDxeLA.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/TzDxe/ScmDxeCompat.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/TzDxe/TzDxeLA.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/SmemDxe/SmemDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/DALSYSDxe/DALSYSDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/HWIODxe/HWIODxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/ChipInfoDxe/ChipInfoDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/IPCCDxe/IPCCDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/PlatformInfoDxe/PlatformInfoDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/ProjectInfoDxe/ProjectInfoDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/HALIOMMUDxe/HALIOMMUDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/ULogDxe/ULogDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/GLinkDxe/GLinkDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/CmdDbDxe/CmdDbDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/PwrUtilsDxe/PwrUtilsDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/NpaDxe/NpaDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/RpmhDxe/RpmhDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/VcsDxe/VcsDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/ClockDxe/ClockDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/ICBDxe/ICBDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/TLMMDxe/TLMMDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/I2CDxe/I2CDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/SPMIDxe/SPMIDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/PmicDxe/PmicDxeLa.inf
+!endif
+
   # XNU 加载器必须编进固件卷：从外部卷加载的驱动会被本 build 的镜像校验拒绝。
   # DarwinBoot is the XNU loader; stage 1 only needs the boot manager UI.
   # It is also the driver that walks the handed-over device tree, which the
@@ -42,6 +73,18 @@
   INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
   INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
+
+!if $(FUXI_UFS_STACK) == 1
+  INF Binaries/nuwa/QcomPkg/Drivers/SdccDxe/SdccDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/UFSDxe/UFSDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/QcomChargerDxe/QcomChargerDxeLA.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/ChargerExDxe/ChargerExDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/PmicGlinkDxe/PmicGlinkDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/UsbPwrCtrlDxe/UsbPwrCtrlDxe.inf
+  INF Binaries/nuwa/QcomPkg/Drivers/UsbfnDwc3Dxe/UsbfnDwc3Dxe.inf
+  INF fuxiPkg/Drivers/FuxiUfsLogDxe/FuxiUfsLogDxe.inf
+  INF fuxiPkg/Drivers/FuxiUefiLogDxe/FuxiUefiLogDxe.inf
+!endif
 
   INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
 

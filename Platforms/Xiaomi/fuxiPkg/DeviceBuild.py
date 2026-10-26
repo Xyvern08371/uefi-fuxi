@@ -63,10 +63,9 @@ class SettingsManager(UpdateSettingsManager, SetupSettingsManager,
         return CommonPlatform.TargetsSupported
 
     def GetRequiredSubmodules(self):
-        # NOTE: sheng also requires "Binaries". fuxi has no vendor binary
-        # import yet, and FUXI_VENDOR_HW = 0 builds without it, so it is
-        # intentionally omitted. Re-add it once the vendor blobs are staged.
+        # FUXI_UFS_STACK consumes Binaries/nuwa vendor DXE binaries.
         return [
+            RequiredSubmodule("Binaries", True),
             RequiredSubmodule("Common/Mu", True),
             RequiredSubmodule("Common/Mu_OEM_Sample", True),
             RequiredSubmodule("Mu_Basecore", True),
