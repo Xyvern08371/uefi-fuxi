@@ -133,6 +133,12 @@
   MemoryMapLib|fuxiPkg/Library/MemoryMapLib/MemoryMapLib.inf
   ConfigurationMapLib|fuxiPkg/Library/ConfigurationMapLib/ConfigurationMapLib.inf
 
+  #
+  # Restart / Recovery / Bootloader
+  #
+  ResetSystemLib|fuxiPkg/Library/FuxiResetSystemLib/FuxiResetSystemLib.inf
+  HwResetSystemLib|fuxiPkg/Library/FuxiResetSystemLib/FuxiResetSystemLib.inf
+
   UniXNULib|UniXNUPkg/Library/UniXNULib/UniXNULib.inf
   FdtLib|MdePkg/Library/BaseFdtLib/BaseFdtLib.inf
 

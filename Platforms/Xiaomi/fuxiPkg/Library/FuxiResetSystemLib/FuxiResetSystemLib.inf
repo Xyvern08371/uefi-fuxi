@@ -1,0 +1,29 @@
+## @file
+#  Fuxi reset system library.
+#
+#  Copyright (c) 2026, UniXNU contributors. All rights reserved.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 1.29
+  BASE_NAME                      = FuxiResetSystemLib
+  FILE_GUID                      = 4F8A3AC8-94B5-4BDE-8E70-CB64F1A9C0D2
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = ResetSystemLib
+  LIBRARY_CLASS                  = HwResetSystemLib
+
+[Sources]
+  FuxiResetSystemLib.c
+
+[Packages]
+  ArmPkg/ArmPkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  ArmMonitorLib
+  BaseLib
+  DebugLib
+  IoLib
