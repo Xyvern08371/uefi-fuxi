@@ -1,0 +1,47 @@
+## @file
+#  Read the XNU BootLog window from UFS and show it as OneSend QR codes.
+#
+#  The XNU side writes the diagnostic log into the last 8192 4K blocks of the
+#  userdata UFS partition (unixnu-fuxi package/BootLog.c). This DXE driver
+#  enumerates EFI_BLOCK_IO_PROTOCOL devices, finds the SHLOG001 header at the
+#  tail of a device, decodes the message buffer and text slots, and reuses
+#  AdvancedLogViewLib so the QR stream matches AdvancedLogDxe.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x0001001B
+  BASE_NAME                      = FuxiUfsLogDxe
+  FILE_GUID                      = B4196C2E-8D7A-4C33-9F51-4E2A6D8C70B1
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = FuxiUfsLogDxeEntry
+
+[Sources]
+  FuxiUfsLogDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  UniXNUPkg/UniXNUPkg.dec
+
+[LibraryClasses]
+  AdvancedLogViewLib
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  DevicePathLib
+  MemoryAllocationLib
+  PrintLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+  UefiLib
+
+[Protocols]
+  gEfiBlockIoProtocolGuid          ## CONSUMES
+  gEfiDevicePathProtocolGuid        ## CONSUMES
+  gEfiSimpleFileSystemProtocolGuid  ## CONSUMES
+  gUniXNUMenuPluginProtocolGuid     ## PRODUCES
+
+[Depex]
+  gEfiBlockIoProtocolGuid
