@@ -40,7 +40,6 @@
 [Protocols]
   gEfiBlockIoProtocolGuid          ## CONSUMES
   gEfiDevicePathProtocolGuid        ## CONSUMES
-  gEfiSimpleFileSystemProtocolGuid  ## CONSUMES
   gUniXNUMenuPluginProtocolGuid     ## PRODUCES
 
 [Depex]

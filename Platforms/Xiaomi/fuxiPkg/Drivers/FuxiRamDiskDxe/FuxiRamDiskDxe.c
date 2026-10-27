@@ -31,7 +31,6 @@
 STATIC EFI_BLOCK_IO_MEDIA     mMedia;
 STATIC EFI_BLOCK_IO_PROTOCOL  mBlockIo;
 STATIC UINT8                  *mVolumeBase;
-STATIC BOOLEAN                mLastLabeled;
 STATIC BOOLEAN                mHintSeen;
 STATIC UINT64                 mHintValue;
 STATIC UINTN                  mVolumeBytes;
@@ -65,10 +64,6 @@ IsPayloadVolume (
   if ((Sector[510] != 0x55) || (Sector[511] != 0xAA)) {
     return FALSE;
   }
-
-  // Prefer the expected label, but accept any plausible FAT volume so a
-  // differently labelled payload still mounts.
-  mLastLabeled = (CompareMem (Sector + FUXI_LABEL_OFFSET, "FUXIESP", FUXI_LABEL_LENGTH) == 0);
 
   BytesPerSector = (UINT16)(Sector[11] | (Sector[12] << 8));
   if (BytesPerSector != FUXI_BLOCK_SIZE) {
