@@ -204,5 +204,5 @@
   #   FuxiKeyInputDxe：电源/音量键 → SimpleTextIn，菜单导航必需。
   #
   # disabled for bring-up, see Include/DXE.inc
-  #fuxiPkg/Drivers/FuxiBootMemoryDxe/FuxiBootMemoryDxe.inf
+  fuxiPkg/Drivers/FuxiBootMemoryDxe/FuxiBootMemoryDxe.inf
   fuxiPkg/Drivers/FuxiKeyInputDxe/FuxiKeyInputDxe.inf

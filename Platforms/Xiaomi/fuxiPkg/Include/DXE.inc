@@ -64,6 +64,7 @@
   # SEC MMU never maps (the tree sits at 0xC5B1D0, outside every
   # MemoryMapLib descriptor), so touching it faults at FAR 0xC5B1D48.
   INF DarwinBootPkg/Driver/DarwinBoot.inf
+  INF fuxiPkg/Drivers/FuxiBootMemoryDxe/FuxiBootMemoryDxe.inf
   INF fuxiPkg/Drivers/FuxiRamDiskDxe/FuxiRamDiskDxe.inf
 !if $(TARGET) == DEBUG
   INF UniXNUPkg/Driver/AdvancedLogDxe/AdvancedLogDxe.inf
@@ -95,14 +96,10 @@
   INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
 
   # 板级驱动
-  #   FuxiBootMemoryDxe 必须在 DXE Core 起来之后、任何大额分配之前加载，
-  #   它会把 DTB 描述的可用 DRAM 补进 GCD。
-  # FuxiBootMemoryDxe disabled for bring-up: it derives DRAM 'holes' from the
-  # appended tree, which on this board is the Android live FDT (35 reserved
-  # ranges, Android /chosen), and the ranges it computes make DXE touch MMIO.
-  # That aborted with a second-level translation fault at 0xC5B1D48.
-  # MemoryMapLib already gives DXE a 209 MiB heap, which is enough for the menu.
-  #INF fuxiPkg/Drivers/FuxiBootMemoryDxe/FuxiBootMemoryDxe.inf
+  #   FuxiBootMemoryDxe 必须在 DXE Core 起来之后、任何大额分配之前加载。
+  #   当前启用它的原因是：sheng 用 DTB 的 /chosen linux,initrd-start/end
+  #   直接发布 payload FAT 卷；FuxiRamDiskDxe 的内存盲扫只是兜底。
+  #   SEC 现在会保留 handed-over DTB，避免 DarwinBoot 覆盖它。
 
   #   把电源/音量键发布成 SimpleTextIn，并把自己挂进 ConIn；
   #   没有它 UniXNU 菜单能显示、不能导航。
