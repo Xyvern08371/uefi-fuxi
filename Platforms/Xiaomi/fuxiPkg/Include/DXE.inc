@@ -83,8 +83,6 @@
   INF Binaries/nuwa/QcomPkg/Drivers/PmicGlinkDxe/PmicGlinkDxe.inf
   INF Binaries/nuwa/QcomPkg/Drivers/UsbPwrCtrlDxe/UsbPwrCtrlDxe.inf
   INF Binaries/nuwa/QcomPkg/Drivers/UsbfnDwc3Dxe/UsbfnDwc3Dxe.inf
-  INF fuxiPkg/Drivers/FuxiUfsLogDxe/FuxiUfsLogDxe.inf
-  INF fuxiPkg/Drivers/FuxiUefiLogDxe/FuxiUefiLogDxe.inf
 !endif
 
   INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
