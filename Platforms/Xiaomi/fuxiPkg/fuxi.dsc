@@ -152,7 +152,6 @@
   FdtLib|MdePkg/Library/BaseFdtLib/BaseFdtLib.inf
 
   AdvancedLoggerAccessLib|AdvLoggerPkg/Library/AdvancedLoggerAccessLib/AdvancedLoggerAccessLib.inf
-  AdvancedLogViewLib|UniXNUPkg/Library/AdvancedLogViewLib/AdvancedLogViewLib.inf
   QrEncoderLib|MsGraphicsPkg/Library/QrEncoderLib/QrEncoderLib.inf
 
 !if $(TARGET) == DEBUG
@@ -187,8 +186,6 @@
   # disabled for stage 1, see Include/DXE.inc
   DarwinBootPkg/Driver/DarwinBoot.inf
   fuxiPkg/Drivers/FuxiRamDiskDxe/FuxiRamDiskDxe.inf
-  fuxiPkg/Drivers/FuxiUfsLogDxe/FuxiUfsLogDxe.inf
-  fuxiPkg/Drivers/FuxiUefiLogDxe/FuxiUefiLogDxe.inf
 !if $(TARGET) == DEBUG
   UniXNUPkg/Driver/AdvancedLogDxe/AdvancedLogDxe.inf
 !endif
