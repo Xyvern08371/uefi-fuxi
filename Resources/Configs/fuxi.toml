@@ -26,8 +26,8 @@ requires_kernel_header = true
 # Do NOT copy sheng's 0xA7100000 / 0x300000. sheng places a 3 MiB image inside
 # the shared 4 MiB window; fuxi uses the whole window from its base.
 [uefi_fd]
-base = 0xA7100000
-size = 0x300000
+base = 0xA7000000
+size = 0x400000
 
 #
 # Android Boot Image Kernel Configs
